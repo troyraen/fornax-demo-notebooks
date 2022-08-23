@@ -1,15 +1,14 @@
 ---
-jupyter:
-  jupytext:
-    text_representation:
-      extension: .md
-      format_name: markdown
-      format_version: '1.3'
-      jupytext_version: 1.14.1
-  kernelspec:
-    display_name: Python 3 (ipykernel)
-    language: python
-    name: python3
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: 0.13
+    jupytext_version: 1.14.1
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
 ---
 
 # Automated multiband forced photometry on large datasets
@@ -46,15 +45,15 @@ IRSA, MAST, HEASARC
 
 
 
-
++++
 
 ### Temporary cell to ensure all dependencies are installed:
 
-```python
+```{code-cell} ipython3
 !pip install -r requirements.txt
 ```
 
-```python
+```{code-cell} ipython3
 # standard lib imports
 
 import math
@@ -108,7 +107,7 @@ from nway_write_header import nway_write_header
 %matplotlib inline
 ```
 
-```python
+```{code-cell} ipython3
 sys.version
 ```
 
@@ -117,7 +116,7 @@ sys.version
 - Catalog we are using is COSMOS2015 (Laigle et al. 2016)  
 - Data exploration
 
-```python
+```{code-cell} ipython3
 #pull a COSMOS catalog from IRSA using astroquery
 
 #make sure the archive isn't limiting our search
@@ -143,10 +142,9 @@ cosmos_table = Irsa.query_region(coords, catalog = "cosmos2015",  radius = rad_i
 #ccosmos_table = cosmos_table
 
 
-
 ```
 
-```python
+```{code-cell} ipython3
 #the Galex mosaic of COSMOS is broken into 4 seperate images
 #need to know which Galex image the targets are nearest to.
 #make a new column in dataframe which figures this out
@@ -172,15 +170,14 @@ df = cosmos_table.to_pandas()
 
 #which row has the minimum value of distance to the galex images
 df['galex_image'] = df[['COSMOS_01','COSMOS_02','COSMOS_03','COSMOS_04']].idxmin(axis = 1)
-
 ```
 
-```python
+```{code-cell} ipython3
 # 76k with 15arcmin diameter IRAC images
 df.describe()
 ```
 
-```python
+```{code-cell} ipython3
 #pull Galex mosaics from MAST
 # Get the observations you want
 in_coordinates = '150.01 2.20'
@@ -200,10 +197,9 @@ Observations.enable_cloud_dataset(provider='AWS')
 #uncomment to actually download the data
 # Download filtered products 
 #Observations.download_products(filtered_products, cloud_only=True, download_dir = '../data/Galex/') 
-
 ```
 
-```python
+```{code-cell} ipython3
 #testing to get the GALEX skybg fits files in addition to the mosaics
 #don't have this working yet, instead pull these files manually
 # get observations
@@ -224,7 +220,7 @@ for row in products['dataURI']:
        #Observations.download_file(skybg_products, cloud_only=True, local_path = '../data/Galex/') 
 ```
 
-```python
+```{code-cell} ipython3
 #make sure there aren't any troublesome rows in the catalog
 #are there missing values in any rows?
 df.isna().sum()
@@ -233,7 +229,7 @@ df.isna().sum()
 #The rest of the rows are complete
 ```
 
-```python
+```{code-cell} ipython3
 #out of curiosity how many of each type of source are in this catalog
 #Type: 0 = galaxy, 1 = star, 2 = X-ray source, -9 is failure to fit
 df.type.value_counts()
@@ -244,18 +240,17 @@ df.type.value_counts()
 - supress debugging output of tractor 
 - build necessary arrays for multiple bands
 
-```python
+```{code-cell} ipython3
 ####purely for testing
 #df = df.head()
 ```
 
-```python
+```{code-cell} ipython3
 # initialize columns in data frame for photometry results
 df[["ch1flux","ch1flux_unc","ch2flux","ch2flux_unc","ch3flux","ch3flux_unc","ch4flux","ch4flux_unc","ch5flux","ch5flux_unc","ch6flux","ch6flux_unc"]] = 0.0
-
 ```
 
-```python
+```{code-cell} ipython3
 #setup to supress output of tractor
 #seems to be the only way to make it be quiet and not output every step of optimization
 #https://stackoverflow.com/questions/2125702/how-to-suppress-console-output-in-python
@@ -269,10 +264,9 @@ def suppress_stdout():
             yield
         finally:
             sys.stdout = old_stdout
-
 ```
 
-```python
+```{code-cell} ipython3
 # parameters needed for the next function
 
 #IRAC
@@ -358,19 +352,17 @@ bkg_hdus = [fits.open(skybgfiles[0])[0], fits.open(skybgfiles[1])[0],fits.open(s
 
 #grab the WCS of the mosaics
 wcs_infos = [wcs.WCS(hdulists[0]),wcs.WCS(hdulists[1]),wcs.WCS(hdulists[2]),wcs.WCS(hdulists[3]),wcs.WCS(hdulists[4]),wcs.WCS(hdulists[5]),wcs.WCS(hdulists[6]),wcs.WCS(hdulists[7]),wcs.WCS(hdulists[8]),wcs.WCS(hdulists[9]),wcs.WCS(hdulists[10]),wcs.WCS(hdulists[11])]
-
 ```
 
 ### A little Data Exploration
 
-```python
+```{code-cell} ipython3
 #Use IRSA's firefly to display image and overlay table
 #just so we know what the data looks like
 fc = FireflyClient.make_client()
-
 ```
 
-```python
+```{code-cell} ipython3
 #give firefly one of the mosaics we are using here
 imval = fc.upload_file(infiles[0])
 status = fc.show_fits(file_on_server=imval, plot_id="IRAC_ch1", title='IRAC ch1')
@@ -386,16 +378,16 @@ status = fc.show_table(file, tbl_id='df', title='COSMOS catalog')
 #this should work, and is simpler, but isn't working.
 #file_table = ffplt.upload_table(t_df, title = 'COSMOS catalog')
 
-
 ```
 
 #### Note: 
 This view will not display all of the catalog rows overlaid on the image.  To do that, narrow down the catalog size by filtering on the catalog inside of the IRSA Viewer web browser.  Documentation for how to interacto with IRSA Viewer is here: https://irsa.ipac.caltech.edu/onlinehelp/irsaviewer/
 
++++
 
 ### Main Function to do the forced photometry
 
-```python
+```{code-cell} ipython3
 def calc_instrflux(band, ra, dec, stype, ks_flux_aper2, g_band):
     """
     calculate instrumental fluxes and uncertainties for four IRAC bands 
@@ -516,16 +508,18 @@ def calc_instrflux(band, ra, dec, stype, ks_flux_aper2, g_band):
         
     else:
         return(band, np.nan, np.nan)
-
 ```
 
 ### Calculate forced photometry
 
++++
 
 #### Straightforward but slow method
 no longer in use
 
-<!-- #raw tags=[] -->
+```{raw-cell}
+:tags: []
+
 %%time
 #do the calculation without multiprocessing for benchmarking
 
@@ -548,12 +542,12 @@ t1 = time.time()
 
 
 #10,000 sources took 1.5 hours with this code
-<!-- #endraw -->
+```
 
 #### Now measure the flux using all of the processors for optimizing speed on large datasets
 Parallelization: we can either interate over the rows of the dataframe and run the four bands in parallel; or we could zip together the row index, band, ra, dec, 
 
-```python
+```{code-cell} ipython3
 paramlist = []
 g_band = 4
 for row in df.itertuples():
@@ -570,7 +564,7 @@ for row in df.itertuples():
             
 ```
 
-```python
+```{code-cell} ipython3
 #test this out on one object
 calc_instrflux(paramlist[0][1], paramlist[0][2], paramlist[0][3], paramlist[0][4], paramlist[0][5], paramlist[0][6])
 
@@ -578,7 +572,7 @@ calc_instrflux(paramlist[0][1], paramlist[0][2], paramlist[0][3], paramlist[0][4
 #calc_instrflux(*paramlist[0][1:])
 ```
 
-```python
+```{code-cell} ipython3
 #wrapper to measure the photometry on a single object, single band
 def calculate_flux(args):
     """Calculate flux."""
@@ -587,7 +581,7 @@ def calculate_flux(args):
     return(args[0], val)
 ```
 
-```python
+```{code-cell} ipython3
 %%time
 #Here is where the multiprocessing work gets done
 t2 = time.time()
@@ -603,7 +597,7 @@ with concurrent.futures.ProcessPoolExecutor(24) as executor:
 t3 = time.time()
 ```
 
-```python
+```{code-cell} ipython3
 #print('Serial calculation took {:.2f} seconds'.format((t1 - t0)))
 print('Parallel calculation took {:.2f} seconds'.format((t3 - t2)))
 #print('Speedup is {:.2f}'.format((t1 - t0) / (t3 - t2)))
@@ -611,7 +605,7 @@ print('Parallel calculation took {:.2f} seconds'.format((t3 - t2)))
 #speedup was factors of 10 - 12 for 400 - 10000 sources
 ```
 
-```python
+```{code-cell} ipython3
 #Count the number of non-zero ch1 fluxes
 #print('Serial calculation: number of ch1 fluxes filled in =',
 #      np.sum(df.ch1flux > 0))
@@ -619,20 +613,20 @@ print('Parallel calculation: number of ch1 fluxes filled in =',
       np.sum(df.ch1flux > 0))
 ```
 
-```python
+```{code-cell} ipython3
 #had to call the galex flux columns ch5 and ch6
 #fix that by renaming them now
 df.rename(columns={'ch5flux':'nuvflux', 'ch5flux_unc':'nuvflux_unc','ch6flux':'fuvflux', 'ch6flux_unc':'fuvflux_unc'}, inplace = True)
 #pl_df.rename(columns={'ch5flux':'nuvflux', 'ch5flux_unc':'nuvflux_unc','ch6flux':'fuvflux', 'ch6flux_unc':'fuvflux_unc'}, inplace = True)
 ```
 
-```python
+```{code-cell} ipython3
 df
 ```
 
 ### Plotting to confirm photometry results against COSMOS 2015 catalog
 
-```python
+```{code-cell} ipython3
 %%time
 #plot tractor fluxes vs. catalog splash fluxes
 #should see a straightline with a slope of 1
@@ -772,7 +766,7 @@ fig.set_size_inches(8, 12)
 
 Tractor is working for IRAC; Comparison of tractor derived fluxes with COSMOS 2015 fluxes for all four Spitzer IRAC channels.  Blue points represent each object from the subset of the COSMOS 2015 catalog.  The blue line is a linear regression robust fit to the data with uncertainties shown as the light blue wedge.  The black line is a y = x line plotted to guide the eye.
 
-```python
+```{code-cell} ipython3
 #save the dataframe with the forced photometry
 #df.to_pickle('../data/COSMOS_15arcmin.pkl')
 
@@ -784,7 +778,7 @@ Tractor is working for IRAC; Comparison of tractor derived fluxes with COSMOS 20
 We are using nway as the tool to do the cross match Salvato et al. 2017.
 nway expects input as two fits table files and outputs a third table file with all the possible matches and their probabilities of being the correct match.  We then sort that catalog and take only the best matches to be the true matches.
 
-```python
+```{code-cell} ipython3
 #first get an X-ray catalog from Heasarc
 heasarc = Heasarc()
 table = heasarc.query_mission_list()
@@ -799,10 +793,9 @@ mission = 'ccosmoscat'
 #coords already defined above where I pull the original COSMOS catalog
 ccosmoscat_rad = 1 #radius of chandra cosmos catalog
 ccosmoscat = heasarc.query_region(coords, mission=mission, radius='1 degree', resultmax = 5000, fields = "ALL")
-
 ```
 
-```python
+```{code-cell} ipython3
 #astropy doesn't recognize capitalized units
 #so there will be some warnings here on writing out the file, but we can safely ignore those
 
@@ -819,10 +812,9 @@ ccosmoscat.write('../data/Chandra/COSMOS_chandra.fits', overwrite = "True")
 #try this
 nway_write_header('../data/Chandra/COSMOS_chandra.fits', 'CHANDRA', float(ccosmoscat_rad**2) )
 
-
 ```
 
-```python
+```{code-cell} ipython3
 #also need to transform the main pandas dataframe into fits table for nway
 
 #make an index column for tracking later
@@ -839,15 +831,14 @@ df_table.write('../data/multiband_phot.fits', overwrite = "True")
 #above isn't working to get the name into the table
 #try this
 nway_write_header('../data/multiband_phot.fits', 'OPT', float((2*rad_in_arcmin/60)**2) )
-
 ```
 
-```python
+```{code-cell} ipython3
 #nway calling sequence
 !nway.py '../data/Chandra/COSMOS_chandra.fits' :ERROR_RADIUS '../data/multiband_phot.fits' 0.1 --out=../data/Chandra/chandra_multiband.fits --radius 15 --prior-completeness 0.9
 ```
 
-```python
+```{code-cell} ipython3
 #Clean up the cross match results and merge them back into main pandas dataframe
 
 #read in the nway matched catalog
@@ -875,10 +866,9 @@ merged = merged.loc[:, ~merged.columns.str.startswith('OPT')]
 
 merged.loc[merged['flux_chandra_2_10'] < 0, 'flux_chandra_2_10'] = 0
 merged.loc[merged['flux_chandra_05_2'] < 0, 'flux_chandra_05_2'] = 0
-
 ```
 
-```python
+```{code-cell} ipython3
 #How many CHandra sources are there?
 
 #make a new column which is a bool of existing chandra measurements
@@ -896,7 +886,7 @@ print('number of Galex detections =',np.sum(merged.galex_detect > 0))
 
 ### Plotting to confirm photometry results against COSMOS 2015 catalog
 
-```python
+```{code-cell} ipython3
 #Plot 
 fig, (ax1,ax2) = plt.subplots(1,2)
 #first shrink the dataframe to only those rows where I have tractor photometry while testing
@@ -926,12 +916,11 @@ ax1.plot(lims, lims, 'k-', alpha=0.75, zorder=0)
 ax1.set(xlabel = 'COSMOS (erg/s/cm2)', ylabel = 'nway matched(erg/s/cm2)', title = 'Chandra SB (05 - 2)')
 
 
-
 ```
 
 ## Make some plots which show off the results and facilitate science
 
-```python
+```{code-cell} ipython3
 #IRAC color color plots akin to Lacy et al. 2004
 #overplot galex sources
 #overplot xray sources
@@ -975,10 +964,9 @@ plt.legend([],[], frameon=False)
 
 #apparently there is a known bug in mpld3 that it doesn't work with log scaled plots
 #mpld3.display(fig)  
-
 ```
 
-```python
+```{code-cell} ipython3
 #UV IR color color plot akin to Bouquin et al. 2015
 fig, ax = plt.subplots()
 merged['FUV-NUV'] = merged.mag_galex_fuv - merged.mag_galex_nuv
@@ -1019,12 +1007,11 @@ ax.set(xlabel = 'NUV - [3.6]', ylabel = 'FUV - NUV')
 
 #fig.savefig("../data/color_color.png")
 mpld3.display(fig)  
-
 ```
 
 We extend the works of Bouquin et al. 2015 and Moutard et al. 2020 by showing a GALEX - Spitzer color color diagram over plotted with Chandra detections.  Blue galaxies in these colors are generated by O and B stars and so must currently be forming stars. We find a tight blue cloud in this color space identifying those star forming galaxies.  Galaxies off of the blue cloud have had their star formation quenched, quite possibly by the existence of an AGN through removal of the gas reservoir required for star formation.  Chandra detected galaxies host AGN, and while those are more limited in number, can be shown here to be a hosted by all kinds of galaxies, including quiescent galaxies which would be in the upper right of this plot.  This likely implies that AGN are indeed involved in quenching star formation.  Additionally, we show the Chandra hardness ratio (HR) color coded according to the vertical color bar on the right side of the plot.  HR is defined as (H-S)/ (H+S) where H and S are the hard[2-10KeV] and soft[0.5-2KeV] bands of Chandra.  Those AGN with higher hardness ratios have their soft x-ray bands heavily obscured and appear to reside preferentially toward the quiescent galaxies.
 
-```python
+```{code-cell} ipython3
 #potential plot ideas
 #salim et al. 2014 serbia astronomical journal
 #(3.6 magniutde) vs. (NUV - 3.6)
@@ -1036,14 +1023,13 @@ We extend the works of Bouquin et al. 2015 and Moutard et al. 2020 by showing a 
 
 #second option
 #match to cosmos for 24 microns and make lacy et al. plot
-
 ```
 
-```python
+```{code-cell} ipython3
 for col in merged.columns:
     print(col)
 ```
 
-```python
+```{code-cell} ipython3
 
 ```
