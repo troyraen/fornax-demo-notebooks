@@ -128,12 +128,12 @@ Irsa.TIMEOUT = 600
 #what is the central RA and DEC of the desired catalog
 coords = SkyCoord('150.01d 2.2d', frame='icrs')  #COSMOS center acording to Simbad
 
-#how large is the search radius
-rad_in_arcmin = 15#full COSMOS is 48arcmin  #was testing with smaller like 3 or 15
+#how large is the search radius, in arcmin
+radius = 15 * u.arcmin #full COSMOS is 48arcmin  #was testing with smaller like 3 or 15
 
 #use Astroquery to get the catalog
 #specify only select columns to limit the size of the catalog
-cosmos_table = Irsa.query_region(coords, catalog = "cosmos2015",  radius = rad_in_arcmin*u.arcmin, 
+cosmos_table = Irsa.query_region(coords, catalog="cosmos2015", radius=radius, 
                                  selcols='ra,dec,id,Ks_FLUX_APER2,Ks_FLUXERR_APER2, PHOTOZ, SPLASH_1_MAG,SPLASH_1_MAGERR, SPLASH_1_FLUX,SPLASH_1_FLUX_ERR,SPLASH_2_FLUX, SPLASH_2_FLUX_ERR,SPLASH_3_FLUX,SPLASH_3_FLUX_ERR,SPLASH_4_FLUX, SPLASH_4_FLUX_ERR, FLUX_GALEX_NUV,FLUX_GALEX_FUV,FLUX_CHANDRA_05_2,FLUX_CHANDRA_2_10, FLUX_CHANDRA_05_10,ID_CHANDRA09 , type,r_MAG_AUTO,r_MAGERR_AUTO, FLUX_24, FLUXERR_24, MAG_GALEX_NUV, MAGERR_GALEX_NUV,MAG_GALEX_FUV, MAGERR_GALEX_FUV')
 
 #select those rows with either chandra fluxes or Galex NUV fluxes
@@ -143,6 +143,77 @@ cosmos_table = Irsa.query_region(coords, catalog = "cosmos2015",  radius = rad_i
 
 
 ```
+
+### Pull image datasets from the cloud
+
++++
+
+#### Use the fornax cloud access API to obtain the IRAC data from the IRSA S3 bucket. 
+
+Details here may change as the prototype code is being added to the appropriate libraries, as well as the data holding to the appropriate NGAP storage as opposed to IRSA resources.
+
+```{code-cell} ipython3
+# Temporary solution
+# This relies on the assumption that https://github.com/fornax-navo/fornax-cloud-access-API is being cloned to this environment. 
+# If it's not, then run a ``git clone https://github.com/fornax-navo/fornax-cloud-access-API --depth=1`` from a terminal at the highest directory root.
+
+# Until https://github.com/fornax-navo/fornax-cloud-access-API/pull/4 is merged clone the fork instead:
+# ``git clone https://github.com/bsipocz/fornax-cloud-access-API --depth=1 -b handler_return``
+
+sys.path.append('../../fornax-cloud-access-API')
+
+import pyvo
+import fornax
+```
+
+```{code-cell} ipython3
+# Getting the COSMOS address from the registry to follow PyVO user case approach. We could hardwire it.
+image_services = pyvo.regsearch(servicetype='image')
+irsa_cosmos = [s for s in image_services if 'irsa' in s.ivoid and 'cosmos' in s.ivoid][0]
+
+# The search returns 11191 entries, but unfortunately we cannot really filter efficiently in the query
+# itself (https://irsa.ipac.caltech.edu/applications/Atlas/AtlasProgramInterface.html#inputparam)
+# to get only the Spitzer IRAC results from COSMOS as a mission. We will do the filtering in a next step before download.
+cosmos_results = irsa_cosmos.search(coords).to_table()
+
+spitzer = cosmos_results[cosmos_results['dataset'] == 'IRAC']
+```
+
+```{code-cell} ipython3
+# Temporarily add the cloud_access metadata to the Atlas response. 
+# This dataset has limited acces, thus 'region' should be used instead of 'open'.
+# S3 access should be available from the daskhub and those who has their IRSA token set up.
+
+fname = spitzer['fname']
+spitzer['cloud_access'] = [(f'{{"aws": {{ "bucket": "irsa-mast-tike-spitzer-data",'
+                            f'             "region": "us-east-1",'
+                            f'             "access": "region",'
+                            f'             "path": "data/COSMOS/{fn}" }} }}') for fn in fname]
+```
+
+```{code-cell} ipython3
+# Adding function to download multiple files using the fornax API. 
+# Requires https://github.com/fornax-navo/fornax-cloud-access-API/pull/4
+def fornax_download(data_table, data_directory='../data', access_url_column='access_url',
+                    fname_filter=None, verbose=False):
+    working_dir = os.getcwd()
+    
+    os.chdir(data_directory)
+    for row in data_table:
+        if fname_filter is not None and fname_filter not in row['fname']:
+            continue
+        handler = fornax.get_data_product(row, 'aws', access_url_column=access_url_column, verbose=verbose)
+        handler.download()
+        
+    os.chdir(working_dir)
+```
+
+```{code-cell} ipython3
+fornax_download(spitzer, access_url_column='sia_url', fname_filter='go2_sci', 
+                data_directory='../data/IRAC', verbose=True)
+```
+
+#### Use astroquery.mast to obtain Galex from the MAST archive
 
 ```{code-cell} ipython3
 #the Galex mosaic of COSMOS is broken into 4 seperate images
