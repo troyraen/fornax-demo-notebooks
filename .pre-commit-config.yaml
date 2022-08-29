@@ -1,0 +1,49 @@
+repos:
+# make bash scripts more readable
+# - repo: https://github.com/lovesegfault/beautysh
+#   rev: v6.2.1
+#   hooks:
+#   - id: beautysh
+# # sync files via jupytext
+# -   repo: https://github.com/mwouts/jupytext
+#     rev: v1.14.1
+#     hooks:
+#     - id: jupytext
+#       # args: [--sync]
+#       # args: [--sync, --execute]
+#       args: [--sync, --pipe, black]
+#       additional_dependencies:
+#         - black==22.6.0
+#         # - nbconvert
+# standardize markdown formatting
+- repo: https://github.com/executablebooks/mdformat
+  rev: 0.7.13
+  hooks:
+  - id: mdformat
+    additional_dependencies:
+    - mdformat-myst
+    # - mdformat-beautysh
+    # - mdformat-black
+    # - black==22.6.0
+    - mdformat-config
+    - mdformat-frontmatter
+    # - mdformat-toc
+    - mdformat-web
+# # blacken docs
+# -   repo: https://github.com/asottile/blacken-docs
+#     rev: v1.12.1
+#     hooks:
+#     -   id: blacken-docs
+#         additional_dependencies: [black==22.6.0]
+# blackify python files
+# - repo: https://github.com/psf/black
+#   rev: 22.6.0
+#   hooks:
+#   - id: black
+#   - id: black-jupyter
+# run pep8 on python files
+# -   repo: https://github.com/pre-commit/mirrors-autopep8
+#     rev: 'v1.6.0'
+#     hooks:
+#     -   id: autopep8
+#         args: [-i, --max-line-length=120]
